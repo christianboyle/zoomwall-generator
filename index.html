@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width" />
+     
+    <title>zoomwall generator</title>
+
+    <link rel="stylesheet" type="text/css" href="./node_modules/zoomwall.js/lib/zoomwall.css" />
+
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background-color: black;
+      }
+
+      header {
+        padding: 1em;
+        background-color: #333;
+        text-align: center;
+      }
+
+      a:link,
+      a:visited {
+        text-decoration: none;
+        font-family: sans-serif;
+        color: white;
+      }
+
+      a:hover {
+        color: #ddd;
+      }
+
+      #title {
+        display: inline-block;
+        font-weight: bold;
+      }
+    </style>
+
+    <script type="module">
+      import * as zoomwall from "./node_modules/zoomwall.js/lib/zoomwall.js";
+
+      window.onload = async function () {
+        try {
+          const response = await fetch('get-images.php');
+          const data = await response.json();
+          
+          if (data.error) {
+            console.error(data.error);
+            document.getElementById("zoomwall").innerHTML = `<p style="color: white;">${data.error}</p>`;
+            return;
+          }
+          
+          const zoomwallDiv = document.getElementById("zoomwall");
+          zoomwallDiv.innerHTML = '';
+          
+          // First, create all image elements
+          const images = data.images.map(imageData => {
+            const img = document.createElement('img');
+            const filename = imageData.filename;
+            img.src = `./images/${filename}`;
+            img.setAttribute('data-highres', `./images/${filename}`);
+            return img;
+          });
+          
+          // Create load promises for all images
+          const imageLoadPromises = images.map(img => {
+            return new Promise((resolve, reject) => {
+              if (img.complete) {
+                resolve();
+              } else {
+                img.onload = () => resolve();
+                img.onerror = reject;
+              }
+            });
+          });
+
+          // Add all images to DOM first
+          images.forEach(img => zoomwallDiv.appendChild(img));
+          
+          // Then wait for all images to load
+          await Promise.all(imageLoadPromises);
+          
+          // Initialize zoomwall only after all images are loaded
+          zoomwall.create(zoomwallDiv, true);
+        } catch (error) {
+          console.error('Error:', error);
+          document.getElementById("zoomwall").innerHTML = '<p style="color: white;">Error loading images. Please check the console for details.</p>';
+        }
+      };
+    </script>
+  </head>
+
+  <body>
+    <header>
+      <a id="title" href="#">zoomwall generator</a>
+    </header>
+
+    <div id="zoomwall" class="zoomwall">
+      <!-- Images will be dynamically added here -->
+    </div>
+  </body>
+</html>
